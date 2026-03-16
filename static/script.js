@@ -327,9 +327,12 @@ document.addEventListener("DOMContentLoaded", () => {
             `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>` :
             `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
 
+        const labelText = role === 'system' ? 'RAG RESPONSE' : 'ASKED QUESTION';
+
         msgWrapper.innerHTML = `
             <div class="avatar">${avatarSvg}</div>
             <div class="msg-bubble">
+                <div class="msg-label">${labelText}</div>
                 ${escapeHTML(text)}
                 <div class="msg-actions">
                     <button class="msg-copy-btn" title="Copy message">
