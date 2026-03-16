@@ -651,6 +651,11 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+.chat-controls {
+    display: flex;
+    gap: 0.75rem;
+}
+
 .chat-header h2 {
     font-family: var(--app-font);
     font-size: 1.3rem;
@@ -735,6 +740,48 @@ body {
     letter-spacing: 0.2px;
     word-break: break-word;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+.msg-actions {
+    position: absolute;
+    bottom: -1rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.message:hover .msg-actions {
+    opacity: 1;
+    bottom: -0.5rem;
+}
+
+.msg-copy-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.msg-copy-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--accent-hover);
+}
+
+.msg-copy-btn.copied {
+    color: var(--success-color);
+    border-color: var(--success-color);
 }
 
 .system-msg .msg-bubble {
@@ -1004,4 +1051,118 @@ body {
     .header { padding: 0.75rem 1rem; }
     .logo { font-size: 1.3rem; }
     .msg-bubble { font-size: 0.85rem; padding: 0.8rem 1rem; }
+}
+
+/* Global Bright Mode Overrides (High Contrast) */
+body.bright-mode {
+    --bg-color-main: #f0f2f5;
+    --card-bg: #ffffff;
+    --card-border: rgba(99, 102, 241, 0.2);
+    --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --panel-bg: rgba(255, 255, 255, 0.95);
+    --glass-border: rgba(99, 102, 241, 0.15);
+}
+
+body.bright-mode .upload-header h2,
+body.bright-mode .chat-header h2,
+body.bright-mode .section-title h3,
+body.bright-mode .auth-title.logo,
+body.bright-mode .chat-typing,
+body.bright-mode .auth-subtitle,
+body.bright-mode .logo,
+body.bright-mode .upload-header p {
+    color: #0f172a !important;
+}
+
+body.bright-mode .system-msg .msg-bubble {
+    background: #e2e8f0 !important;
+    color: #1e293b !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+}
+
+body.bright-mode .user-msg .msg-bubble {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2) !important;
+}
+
+body.bright-mode .user-msg .avatar {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+body.bright-mode #questionInput {
+    color: #0f172a !important;
+}
+
+body.bright-mode #questionInput::placeholder {
+    color: #64748b !important;
+}
+
+body.bright-mode .uploaded-files-section {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+body.bright-mode .chat-input-wrapper {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
+}
+
+body.bright-mode .upload-zone {
+    background: #f1f5f9 !important;
+    border: 2px dashed #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.bright-mode .upload-zone span {
+    color: #0f172a !important;
+}
+
+body.bright-mode .stats-badge {
+    background: #dcfce7 !important;
+    border-color: #86efac !important;
+    color: #166534 !important;
+}
+
+body.bright-mode .pulse-dot {
+    background: #22c55e !important;
+}
+
+body.bright-mode .auth-form input {
+    color: #0f172a !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+body.bright-mode .action-btn {
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #475569 !important;
+}
+
+body.bright-mode .action-btn:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+body.bright-mode .file-item {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #1e293b !important;
+}
+
+body.bright-mode .file-delete-btn {
+    color: #94a3b8 !important;
+}
+
+body.bright-mode .file-delete-btn:hover {
+    color: #ef4444 !important;
+    background: #fee2e2 !important;
 }

@@ -329,11 +329,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
         msgWrapper.innerHTML = `
             <div class="avatar">${avatarSvg}</div>
-            <div class="msg-bubble">${escapeHTML(text)}</div>
+            <div class="msg-bubble">
+                ${escapeHTML(text)}
+                <div class="msg-actions">
+                    <button class="msg-copy-btn" title="Copy message">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                </div>
+            </div>
         `;
         
         chatHistory.appendChild(msgWrapper);
         chatHistory.scrollTop = chatHistory.scrollHeight;
+
+        // Message-level copy logic
+        const copyBtn = msgWrapper.querySelector('.msg-copy-btn');
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(text).then(() => {
+                copyBtn.classList.add('copied');
+                const originalIcon = copyBtn.innerHTML;
+                copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                setTimeout(() => {
+                    copyBtn.classList.remove('copied');
+                    copyBtn.innerHTML = originalIcon;
+                }, 2000);
+            });
+        });
 
         if (save) {
             let history = JSON.parse(localStorage.getItem('rag_chat_history') || '[]');
@@ -341,6 +362,20 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem('rag_chat_history', JSON.stringify(history));
         }
     }
+
+    const shareChatBtn = document.getElementById('shareChatBtn');
+    shareChatBtn.addEventListener('click', () => {
+        let history = JSON.parse(localStorage.getItem('rag_chat_history') || '[]');
+        if (history.length === 0) {
+            alert("No conversation to share yet.");
+            return;
+        }
+
+        let fullText = history.map(m => `[${m.role.toUpperCase()}]: ${m.text}`).join('\n\n');
+        navigator.clipboard.writeText(fullText).then(() => {
+            alert("Full chat transcript copied to clipboard!");
+        });
+    });
 
     function loadChatHistory() {
         chatHistory.innerHTML = `

@@ -176,7 +176,16 @@ async def signup(user: AuthSignup, background_tasks: BackgroundTasks):
                 "otp_expiry": datetime.utcnow() + timedelta(minutes=15)
             })
         
-        html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; color: #1e293b;">
+            <h2 style="color: #4f46e5;">Your Verification Code</h2>
+            <p>Welcome to RAG Analyst! Please use the OTP below to verify your account:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <span style="font-size: 2rem; font-weight: bold; letter-spacing: 5px; color: #4f46e5; background: #f1f5f9; padding: 10px 25px; border-radius: 8px;">{otp}</span>
+            </div>
+            <p style="font-size: 0.9rem; color: #64748b;">This code is valid for 15 minutes.</p>
+        </div>
+        """
         background_tasks.add_task(send_email, user.email, "Your OTP Code", html_body)
             
         return {"message": "OTP sent to your email"}
@@ -200,10 +209,18 @@ async def verify(data: AuthVerify, background_tasks: BackgroundTasks):
         
     users_collection.update_one({"email": data.email}, {"$set": {"is_verified": True}, "$unset": {"otp": "", "otp_expiry": ""}})
     
-    html_body = "<h2>Verification Successful!</h2><p>Thank you for joining NexGen RAG Analyst. You can now login and start analyzing your documents.</p>"
+    html_body = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; color: #1e293b;">
+        <h2 style="color: #4f46e5;">Welcome to NexGen RAG Analyst!</h2>
+        <p>Your account (<strong>{data.email}</strong>) has been successfully verified.</p>
+        <p>You can now log in to the dashboard to upload documents and start chatting with our AI.</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+        <p style="font-size: 0.9rem; color: #64748b;">Thanks for joining us!</p>
+    </div>
+    """
     
     if SENDER_EMAIL and SENDER_PASSWORD:
-        background_tasks.add_task(send_email, data.email, "Thanks for joining!", html_body)
+        background_tasks.add_task(send_email, data.email, "Welcome to RAG Analyst!", html_body)
         
     return {"message": "Account verified successfully. You can now login."}
 
