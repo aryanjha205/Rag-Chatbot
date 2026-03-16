@@ -57,13 +57,24 @@ files_collection = None
 users_collection = None
 
 try:
-    client = MongoClient(MONGO_URI, server_api=ServerApi('1'), tlsCAFile=certifi.where())
+    # Optimized for Serverless: shorter timeouts to fail fast rather than hang
+    client = MongoClient(
+        MONGO_URI, 
+        server_api=ServerApi('1'), 
+        tlsCAFile=certifi.where(),
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+        socketTimeoutMS=5000
+    )
     db = client['rag_database']
     chunks_collection = db['document_chunks']
     files_collection = db['processed_files']
     users_collection = db['users']
-    client.admin.command('ping')
-    logger.info("Successfully connected to MongoDB.")
+    
+    # Ensure unique index on email for fast lookups
+    users_collection.create_index("email", unique=True)
+    
+    logger.info("Successfully connected to MongoDB and ensured indexes.")
 except Exception as e:
     logger.error(f"Failed to connect to MongoDB: {e}")
     logger.error(f"Failed to connect to MongoDB: {e}")
@@ -96,7 +107,7 @@ def send_email(to_email: str, subject: str, body: str):
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'html'))
         
-        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=15)
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=7)
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.send_message(msg)
         server.quit()
@@ -150,18 +161,6 @@ async def signup(user: AuthSignup, background_tasks: BackgroundTasks):
         "otp_expiry": datetime.utcnow() + timedelta(minutes=15)
     })
     
-    html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"
-    
-    # Robust check for email credentials (handle None or empty string)
-    email_user = SENDER_EMAIL or ""
-    email_pass = SENDER_PASSWORD or ""
-    
-    if not email_user.strip() or not email_pass.strip():
-        raise HTTPException(
-            status_code=500, 
-            detail="SMTP server not configured. Please add SENDER_EMAIL and SENDER_PASSWORD to your environment variables."
-        )
-
     html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"
     
     background_tasks.add_task(send_email, user.email, "Your OTP Code", html_body)
