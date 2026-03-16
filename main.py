@@ -66,9 +66,9 @@ except Exception as e:
 
 # ================= AUTH & EMAIL CONFIG =================
 SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SENDER_EMAIL = os.getenv("SENDER_EMAIL", "bharatlabs.in@gmail.com")
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "ndtv uymm ykea qczo")
+SMTP_PORT = 465
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 JWT_SECRET = os.getenv("JWT_SECRET", "supersecret_rag_key_change_in_prod")
 JWT_ALGORITHM = "HS256"
 
@@ -77,6 +77,10 @@ def hash_password(password: str) -> str:
     return hashlib.sha256((password + salt).encode()).hexdigest()
 
 def send_email(to_email: str, subject: str, body: str):
+    if not SENDER_EMAIL or not SENDER_PASSWORD:
+        logger.error("SMTP credentials missing. Email not sent.")
+        return False
+        
     try:
         msg = MIMEMultipart()
         msg['From'] = SENDER_EMAIL
@@ -84,14 +88,15 @@ def send_email(to_email: str, subject: str, body: str):
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'html'))
         
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=15)
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.send_message(msg)
         server.quit()
         logger.info(f"Email sent to {to_email}")
+        return True
     except Exception as e:
         logger.error(f"Email failure: {e}")
+        return False
 
 class AuthSignup(BaseModel):
     email: str
@@ -136,10 +141,15 @@ async def signup(user: AuthSignup, background_tasks: BackgroundTasks):
     
     html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"
     
-    if SENDER_EMAIL and SENDER_PASSWORD:
-        background_tasks.add_task(send_email, user.email, "Your OTP Code", html_body)
-    else:
-        logger.warning("SMTP credentials not found. Email not sent.")
+    if not SENDER_EMAIL or not SENDER_PASSWORD:
+        raise HTTPException(
+            status_code=500, 
+            detail="Mail server not configured. Please add SENDER_EMAIL and SENDER_PASSWORD to Environment Variables."
+        )
+
+    html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"
+    
+    background_tasks.add_task(send_email, user.email, "Your OTP Code", html_body)
         
     return {"message": "OTP sent to your email"}
 
