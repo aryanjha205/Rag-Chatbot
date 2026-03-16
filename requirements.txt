@@ -5,3 +5,6 @@ PyPDF2
 requests
 jinja2
 scikit-learn
+pymongo
+certifi
+pyjwt

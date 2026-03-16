@@ -7,15 +7,26 @@ import io
 import json
 import logging
 import requests
+import certifi
 import numpy as np
-from typing import List, Dict, Any
-from fastapi import FastAPI, UploadFile, File, Form, Request
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import secrets
+import hashlib
+import jwt
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
+from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, HTTPException, status, Header
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from PyPDF2 import PdfReader
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -33,15 +44,127 @@ os.makedirs(TEMPLATES_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
-# Global State for Document Indexing
-# We use an in-memory approach for lightweight execution.
-document_chunks = []
-processed_files = set()
-total_uploaded_files = 0
+# MongoDB Configuration
+MONGO_URI = "mongodb+srv://ravalmohit390_db_user:MOHIT567@cluster0.ybz53dp.mongodb.net/?appName=Cluster0"
+try:
+    client = MongoClient(MONGO_URI, server_api=ServerApi('1'), tlsCAFile=certifi.where())
+    db = client['rag_database']
+    chunks_collection = db['document_chunks']
+    files_collection = db['processed_files']
+    users_collection = db['users']
+    logger.info("Successfully connected to MongoDB.")
+except Exception as e:
+    logger.error(f"Failed to connect to MongoDB: {e}")
 
-logger.info("Initializing vectorizer")
-vectorizer = TfidfVectorizer()
-tfidf_matrix = None
+# Global State for Document Indexing
+# Each user will have their chunks loaded into memory on-demand or filtered.
+# For simplicity with TF-IDF, we will fetch user-specific data during requests.
+
+# ================= AUTH & EMAIL CONFIG =================
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SENDER_EMAIL = "bharatlabs.in@gmail.com"
+SENDER_PASSWORD = "ndtv uymm ykea qczo"
+JWT_SECRET = "supersecret_rag_key_change_in_prod"
+JWT_ALGORITHM = "HS256"
+
+def hash_password(password: str) -> str:
+    salt = "fixed_salt_for_simplicity"
+    return hashlib.sha256((password + salt).encode()).hexdigest()
+
+def send_email(to_email: str, subject: str, body: str):
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'html'))
+        
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        logger.info(f"Email sent to {to_email}")
+    except Exception as e:
+        logger.error(f"Email failure: {e}")
+
+class AuthSignup(BaseModel):
+    email: str
+    password: str
+
+class AuthVerify(BaseModel):
+    email: str
+    otp: str
+
+class AuthLogin(BaseModel):
+    email: str
+    password: str
+
+def get_current_user(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    token = authorization.split(" ")[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        email = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return email
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@app.post("/auth/signup")
+async def signup(user: AuthSignup):
+    if users_collection.find_one({"email": user.email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+        
+    otp = str(secrets.randbelow(900000) + 100000)
+    hashed_pw = hash_password(user.password)
+    
+    users_collection.insert_one({
+        "email": user.email,
+        "password": hashed_pw,
+        "is_verified": False,
+        "otp": otp,
+        "otp_expiry": datetime.utcnow() + timedelta(minutes=15)
+    })
+    
+    html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"
+    send_email(user.email, "Your OTP Code", html_body)
+    return {"message": "OTP sent to your email"}
+
+@app.post("/auth/verify")
+async def verify(data: AuthVerify):
+    user_db = users_collection.find_one({"email": data.email})
+    if not user_db:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user_db.get("is_verified"):
+        return {"message": "Already verified"}
+    if user_db.get("otp") != data.otp or user_db.get("otp_expiry") < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+        
+    users_collection.update_one({"email": data.email}, {"$set": {"is_verified": True}, "$unset": {"otp": "", "otp_expiry": ""}})
+    
+    html_body = "<h2>Verification Successful!</h2><p>Thank you for joining NexGen RAG Analyst. You can now login and start analyzing your documents.</p>"
+    send_email(data.email, "Thanks for joining!", html_body)
+    return {"message": "Account verified successfully. You can now login."}
+
+@app.post("/auth/login")
+async def login(user: AuthLogin):
+    user_db = users_collection.find_one({"email": user.email})
+    if not user_db or user_db["password"] != hash_password(user.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not user_db.get("is_verified"):
+        raise HTTPException(status_code=403, detail="Account not verified. Please verify OTP first.")
+        
+    token = jwt.encode(
+        {"sub": user.email, "exp": datetime.utcnow() + timedelta(days=7)},
+        JWT_SECRET,
+        algorithm=JWT_ALGORITHM
+    )
+    return {"access_token": token}
+# =======================================================
 
 def split_text(text: str, chunk_size: int = 800, overlap: int = 150) -> List[str]:
     """Splits text into chunks of specified size with overlap."""
@@ -76,15 +199,6 @@ def extract_text(file_content: bytes, filename: str) -> str:
                 logger.error(f"Error reading text file {filename}: {e}")
     return text
 
-def calculate_similarity(query: str):
-    """Computes cosine similarity between query and the document chunks."""
-    if not document_chunks or tfidf_matrix is None:
-        return []
-    
-    query_vec = vectorizer.transform([query])
-    similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
-    return similarities
-
 @app.get("/", response_class=HTMLResponse)
 async def serve_index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -98,23 +212,26 @@ async def serve_manifest():
     return FileResponse(os.path.join(STATIC_DIR, "manifest.json"))
 
 @app.get("/stats")
-async def get_stats():
-    global total_uploaded_files, document_chunks, processed_files
+async def get_stats(user_email: str = Depends(get_current_user)):
+    user_files = list(files_collection.find({"user_email": user_email}))
+    user_chunks = list(chunks_collection.find({"user_email": user_email}))
+    
     return JSONResponse({
-        "files": total_uploaded_files,
-        "chunks": len(document_chunks),
-        "file_list": list(processed_files)
+        "files": len(user_files),
+        "chunks": len(user_chunks),
+        "file_list": [f['filename'] for f in user_files]
     })
 
 @app.post("/upload")
-async def upload_files(files: List[UploadFile] = File(...)):
-    global document_chunks, processed_files, total_uploaded_files, tfidf_matrix, vectorizer
-    
+async def upload_files(files: List[UploadFile] = File(...), user_email: str = Depends(get_current_user)):
     new_chunks_count = 0
     new_files_count = 0
     
+    # Get existing user files
+    existing_files = set(f['filename'] for f in files_collection.find({"user_email": user_email}))
+
     for file in files:
-        if file.filename in processed_files:
+        if file.filename in existing_files:
             continue
             
         content = await file.read()
@@ -126,39 +243,45 @@ async def upload_files(files: List[UploadFile] = File(...)):
             
         chunks = split_text(text)
         if chunks:
-            document_chunks.extend(chunks)
-            processed_files.add(file.filename)
             new_chunks_count += len(chunks)
             new_files_count += 1
-            total_uploaded_files += 1
             
-    # Recreate the TF-IDF matrix for all chunks to update vocabulary
-    if document_chunks:
-        tfidf_matrix = vectorizer.fit_transform(document_chunks)
-
+            # Save to MongoDB
+            try:
+                files_collection.insert_one({"filename": file.filename, "user_email": user_email})
+                chunk_docs = [{"filename": file.filename, "text": chunk, "user_email": user_email} for chunk in chunks]
+                if chunk_docs:
+                    chunks_collection.insert_many(chunk_docs)
+            except Exception as e:
+                logger.error(f"Failed to insert into MongoDB: {e}")
+            
     return JSONResponse({
         "message": f"Successfully processed {new_files_count} new files.",
-        "new_chunks": new_chunks_count,
-        "total_files": total_uploaded_files,
-        "total_chunks": len(document_chunks)
+        "new_chunks": new_chunks_count
     })
 
 @app.post("/chat")
-async def chat(question: str = Form(...)):
-    global document_chunks, tfidf_matrix
-    
-    if tfidf_matrix is None or len(document_chunks) == 0:
-        return JSONResponse({"answer": "I have no documents indexed. Please upload some files first."})
+async def chat(question: str = Form(...), user_email: str = Depends(get_current_user)):
+    user_chunks_docs = list(chunks_collection.find({"user_email": user_email}))
+    user_chunks = [c['text'] for c in user_chunks_docs]
+
+    if not user_chunks:
+        return JSONResponse({"answer": "I have no documents indexed for your account. Please upload some files first."})
         
     try:
-        similarities = calculate_similarity(question)
+        # Dynamic TF-IDF build for the user's specific chunks
+        user_vectorizer = TfidfVectorizer()
+        user_tfidf_matrix = user_vectorizer.fit_transform(user_chunks)
+        
+        query_vec = user_vectorizer.transform([question])
+        similarities = cosine_similarity(query_vec, user_tfidf_matrix).flatten()
         
         # Find top k matches
-        k = min(5, len(document_chunks))
+        k = min(5, len(user_chunks))
         top_k_indices = np.argsort(similarities)[::-1][:k]
         
         # Retrieve mapped context chunks
-        context_chunks = [document_chunks[i] for i in top_k_indices]
+        context_chunks = [user_chunks[i] for i in top_k_indices]
         context_text = "\n\n".join(context_chunks)
         
         # We need to explicitly order the AI to output exactly one paragraph without bullets.

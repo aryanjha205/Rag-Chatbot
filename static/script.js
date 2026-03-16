@@ -1,5 +1,23 @@
 document.addEventListener("DOMContentLoaded", () => {
     
+    // --- Auth Elements ---
+    const authOverlay = document.getElementById('authOverlay');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const verifyForm = document.getElementById('verifyForm');
+    
+    const showSignup = document.getElementById('showSignup');
+    const showLogin = document.getElementById('showLogin');
+    
+    const loginStatus = document.getElementById('loginStatus');
+    const signupStatus = document.getElementById('signupStatus');
+    const verifyStatus = document.getElementById('verifyStatus');
+    
+    const authTitle = document.getElementById('authTitle');
+    const authSubtitle = document.getElementById('authSubtitle');
+    
+    const logoutBtn = document.getElementById('logoutBtn');
+
     // --- UI Elements ---
     const uploadZone = document.getElementById('uploadZone');
     const fileInput = document.getElementById('fileInput');
@@ -17,19 +35,151 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatTyping = document.getElementById('chatTyping');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
-    // --- State Initialization ---
-    loadChatHistory();
-    updateStats();
+    // --- State & Auth Logic ---
+    let authToken = localStorage.getItem('rag_token');
+    let verifyEmail = ""; // Temporary storage for OTP verification
+
+    checkAuth();
+
+    function checkAuth() {
+        if (!authToken) {
+            authOverlay.classList.remove('hidden');
+        } else {
+            authOverlay.classList.add('hidden');
+            loadChatHistory();
+            updateStats();
+        }
+    }
+
+    function saveToken(token) {
+        authToken = token;
+        localStorage.setItem('rag_token', token);
+        checkAuth();
+    }
+
+    logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('rag_token');
+        authToken = null;
+        checkAuth();
+    });
+
+    // --- Auth View Swapping ---
+    showSignup.addEventListener('click', () => {
+        loginForm.classList.add('hidden');
+        signupForm.classList.remove('hidden');
+        authSubtitle.textContent = "Create a new account";
+    });
+
+    showLogin.addEventListener('click', () => {
+        signupForm.classList.add('hidden');
+        loginForm.classList.remove('hidden');
+        authSubtitle.textContent = "Login to access your workspace";
+    });
+
+    // --- Signup ---
+    signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('signupEmail').value;
+        const password = document.getElementById('signupPassword').value;
+        
+        signupStatus.textContent = "Sending OTP...";
+        signupStatus.className = "auth-status";
+
+        try {
+            const response = await fetch('/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+            
+            if (response.ok) {
+                verifyEmail = email;
+                signupForm.classList.add('hidden');
+                verifyForm.classList.remove('hidden');
+                authSubtitle.textContent = "Enter the code sent to your email";
+            } else {
+                signupStatus.textContent = data.detail || "Signup failed";
+                signupStatus.classList.add('error');
+            }
+        } catch (err) {
+            signupStatus.textContent = "Network error";
+            signupStatus.classList.add('error');
+        }
+    });
+
+    // --- Verification ---
+    verifyForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const otp = document.getElementById('verifyOtp').value;
+        
+        verifyStatus.textContent = "Verifying...";
+        verifyStatus.className = "auth-status";
+
+        try {
+            const response = await fetch('/auth/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: verifyEmail, otp })
+            });
+            const data = await response.json();
+            
+            if (response.ok) {
+                verifyStatus.textContent = "Success! Please login.";
+                verifyStatus.classList.add('success');
+                setTimeout(() => {
+                    verifyForm.classList.add('hidden');
+                    loginForm.classList.remove('hidden');
+                    authSubtitle.textContent = "Login to access your workspace";
+                }, 2000);
+            } else {
+                verifyStatus.textContent = data.detail || "Verificaton failed";
+                verifyStatus.classList.add('error');
+            }
+        } catch (err) {
+            verifyStatus.textContent = "Network error";
+            verifyStatus.classList.add('error');
+        }
+    });
+
+    // --- Login ---
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        
+        loginStatus.textContent = "Logging in...";
+        loginStatus.className = "auth-status";
+
+        try {
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+            
+            if (response.ok) {
+                saveToken(data.access_token);
+            } else {
+                loginStatus.textContent = data.detail || "Login failed";
+                loginStatus.classList.add('error');
+            }
+        } catch (err) {
+            loginStatus.textContent = "Network error";
+            loginStatus.classList.add('error');
+        }
+    });
+
+    // --- App Logic (With Auth Headers) ---
 
     clearHistoryBtn.addEventListener('click', () => {
         localStorage.removeItem('rag_chat_history');
-        // Keep the welcome message, remove others
         while (chatHistory.children.length > 1) {
             chatHistory.removeChild(chatHistory.lastChild);
         }
     });
 
-    // --- Upload Logic ---
     uploadZone.addEventListener('click', () => fileInput.click());
 
     uploadZone.addEventListener('dragover', (e) => {
@@ -73,31 +223,32 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         uploadProgress.classList.remove('hidden');
-        uploadStatus.className = 'status-msg'; // hide and reset
-        fileInput.value = ''; // Reset input
+        uploadStatus.className = 'status-msg';
+        fileInput.value = '';
 
         try {
             const response = await fetch('/upload', {
                 method: 'POST',
+                headers: { 'Authorization': `Bearer ${authToken}` },
                 body: formData
             });
             const data = await response.json();
 
             if (response.ok) {
                 showStatus(data.message, 'success');
-                updateStats(); // Update stats dynamically so GUI displays the new array map
+                updateStats();
+            } else if (response.status === 401) {
+                logoutBtn.click();
             } else {
                 showStatus(data.detail || 'Upload failed.', 'error');
             }
         } catch (err) {
-            console.error(err);
             showStatus('Network error during upload.', 'error');
         } finally {
             uploadProgress.classList.add('hidden');
         }
     }
 
-    // --- Chat Logic ---
     function autoResizeTextarea() {
         questionInput.style.height = 'auto';
         questionInput.style.height = (questionInput.scrollHeight) + 'px';
@@ -117,12 +268,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const question = questionInput.value.trim();
         if (!question) return;
 
-        // User message
         appendMessage('user', question);
         questionInput.value = '';
-        questionInput.style.height = 'auto'; // Reset size
+        questionInput.style.height = 'auto';
 
-        // UI blocking
         sendBtn.disabled = true;
         chatTyping.classList.remove('hidden');
 
@@ -132,17 +281,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const response = await fetch('/chat', {
                 method: 'POST',
+                headers: { 'Authorization': `Bearer ${authToken}` },
                 body: formData
             });
             const data = await response.json();
 
             if (response.ok) {
                 appendMessage('system', data.answer);
+            } else if (response.status === 401) {
+                logoutBtn.click();
             } else {
                 appendMessage('system', 'Error: ' + (data.answer || 'Something went wrong.'));
             }
         } catch(err) {
-            console.error(err);
             appendMessage('system', 'System error contacting the server.');
         } finally {
             sendBtn.disabled = false;
@@ -155,13 +306,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const msgWrapper = document.createElement('div');
         msgWrapper.className = `message ${role}-msg`;
 
-        // SVG Avatar Selection
-        let avatarSvg = '';
-        if (role === 'system') {
-            avatarSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>`;
-        } else {
-            avatarSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
-        }
+        let avatarSvg = role === 'system' ? 
+            `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>` :
+            `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
 
         msgWrapper.innerHTML = `
             <div class="avatar">${avatarSvg}</div>
@@ -172,17 +319,21 @@ document.addEventListener("DOMContentLoaded", () => {
         chatHistory.scrollTop = chatHistory.scrollHeight;
 
         if (save) {
-            saveChatMessage(role, text);
+            let history = JSON.parse(localStorage.getItem('rag_chat_history') || '[]');
+            history.push({role, text});
+            localStorage.setItem('rag_chat_history', JSON.stringify(history));
         }
     }
 
-    function saveChatMessage(role, text) {
-        let history = JSON.parse(localStorage.getItem('rag_chat_history') || '[]');
-        history.push({role, text});
-        localStorage.setItem('rag_chat_history', JSON.stringify(history));
-    }
-
     function loadChatHistory() {
+        chatHistory.innerHTML = `
+            <div class="message system-msg">
+                <div class="avatar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                </div>
+                <div class="msg-bubble">Welcome to NexGen RAG Analyst. Upload your documents and start asking questions!</div>
+            </div>
+        `;
         let history = JSON.parse(localStorage.getItem('rag_chat_history') || '[]');
         history.forEach(msg => appendMessage(msg.role, msg.text, false));
     }
@@ -193,23 +344,22 @@ document.addEventListener("DOMContentLoaded", () => {
         return div.innerHTML;
     }
 
-    // --- Util Methods ---
     function showStatus(text, type) {
         uploadStatus.textContent = text;
         uploadStatus.className = `status-msg ${type}`;
-        setTimeout(() => {
-            uploadStatus.classList.remove(type);
-        }, 5000); // hide after 5s
+        setTimeout(() => { uploadStatus.classList.remove(type); }, 5000);
     }
 
     async function updateStats() {
+        if (!authToken) return;
         try {
-            const response = await fetch('/stats');
+            const response = await fetch('/stats', {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (response.status === 401) { logoutBtn.click(); return; }
             const data = await response.json();
             updateStatsUI(data.files, data.chunks, data.file_list || []);
-        } catch (e) {
-            console.error("Could not fetch stats", e);
-        }
+        } catch (e) { console.error("Could not fetch stats", e); }
     }
 
     function updateStatsUI(files, chunks, fileList) {
@@ -233,7 +383,5 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function focusInput() {
-        questionInput.focus();
-    }
+    function focusInput() { questionInput.focus(); }
 });
