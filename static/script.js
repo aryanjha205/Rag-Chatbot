@@ -446,5 +446,37 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.setItem('rag_theme', currentTheme);
     });
 
+    // --- Mobile Nav Logic ---
+    const mobileNavItems = document.querySelectorAll('.mobile-bottom-nav .nav-item');
+    const uploadSidebar = document.querySelector('.upload-sidebar');
+    const chatSection = document.querySelector('.chat-section');
+
+    function switchView(target) {
+        if (window.innerWidth > 600) return; // Only for mobile
+
+        if (target === 'chat') {
+            chatSection.classList.remove('view-hidden');
+            uploadSidebar.classList.add('view-hidden');
+        } else {
+            chatSection.classList.add('view-hidden');
+            uploadSidebar.classList.remove('view-hidden');
+        }
+
+        mobileNavItems.forEach(item => {
+            item.classList.toggle('active', item.dataset.target === target);
+        });
+    }
+
+    mobileNavItems.forEach(item => {
+        item.addEventListener('click', () => {
+            switchView(item.dataset.target);
+        });
+    });
+
+    // Initialize mobile view
+    if (window.innerWidth <= 600) {
+        switchView('chat');
+    }
+
     function focusInput() { questionInput.focus(); }
 });
