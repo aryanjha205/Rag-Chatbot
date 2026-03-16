@@ -49,7 +49,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 # MongoDB Configuration
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://ravalmohit390_db_user:MOHIT567@cluster0.ybz53dp.mongodb.net/?appName=Cluster0")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://ravalmohit390_db_user:MOHIT567@cluster0.ybz53dp.mongodb.net/rag_database?retryWrites=true&w=majority")
 
 # Initialize collections as None
 chunks_collection = None
@@ -152,19 +152,29 @@ async def signup(user: AuthSignup, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=503, detail="Database connection is unavailable. Please check your MONGO_URI.")
 
     try:
-        if users_collection.find_one({"email": user.email}):
-            raise HTTPException(status_code=400, detail="Email already registered")
-            
-        otp = str(secrets.randbelow(900000) + 100000)
-        hashed_pw = hash_password(user.password)
-        
-        users_collection.insert_one({
-            "email": user.email,
-            "password": hashed_pw,
-            "is_verified": False,
-            "otp": otp,
-            "otp_expiry": datetime.utcnow() + timedelta(minutes=15)
-        })
+        existing_user = users_collection.find_one({"email": user.email})
+        if existing_user:
+            if existing_user.get("is_verified"):
+                raise HTTPException(status_code=400, detail="Email already registered and verified.")
+            # If not verified, we'll update the OTP and allow them to "re-signup"
+            otp = str(secrets.randbelow(900000) + 100000)
+            users_collection.update_one(
+                {"email": user.email},
+                {"$set": {
+                    "password": hash_password(user.password),
+                    "otp": otp,
+                    "otp_expiry": datetime.utcnow() + timedelta(minutes=15)
+                }}
+            )
+        else:
+            otp = str(secrets.randbelow(900000) + 100000)
+            users_collection.insert_one({
+                "email": user.email,
+                "password": hash_password(user.password),
+                "is_verified": False,
+                "otp": otp,
+                "otp_expiry": datetime.utcnow() + timedelta(minutes=15)
+            })
         
         html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"
         background_tasks.add_task(send_email, user.email, "Your OTP Code", html_body)
@@ -174,10 +184,12 @@ async def signup(user: AuthSignup, background_tasks: BackgroundTasks):
         raise
     except Exception as e:
         logger.error(f"Signup Database Error: {e}")
-        raise HTTPException(status_code=500, detail="Database error during signup. Check connection string.")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.post("/auth/verify")
 async def verify(data: AuthVerify, background_tasks: BackgroundTasks):
+    if users_collection is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
     user_db = users_collection.find_one({"email": data.email})
     if not user_db:
         raise HTTPException(status_code=404, detail="User not found")
@@ -197,6 +209,8 @@ async def verify(data: AuthVerify, background_tasks: BackgroundTasks):
 
 @app.post("/auth/login")
 async def login(user: AuthLogin):
+    if users_collection is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
     user_db = users_collection.find_one({"email": user.email})
     if not user_db or user_db["password"] != hash_password(user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -258,6 +272,8 @@ async def serve_manifest():
 
 @app.get("/stats")
 async def get_stats(user_email: str = Depends(get_current_user)):
+    if files_collection is None or chunks_collection is None:
+        return JSONResponse({"files": 0, "chunks": 0, "file_list": []})
     user_files = list(files_collection.find({"user_email": user_email}))
     user_chunks = list(chunks_collection.find({"user_email": user_email}))
     
@@ -269,6 +285,8 @@ async def get_stats(user_email: str = Depends(get_current_user)):
 
 @app.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...), user_email: str = Depends(get_current_user)):
+    if files_collection is None or chunks_collection is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
     new_chunks_count = 0
     new_files_count = 0
     
@@ -307,6 +325,8 @@ async def upload_files(files: List[UploadFile] = File(...), user_email: str = De
 
 @app.post("/chat")
 async def chat(question: str = Form(...), user_email: str = Depends(get_current_user)):
+    if chunks_collection is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
     user_chunks_docs = list(chunks_collection.find({"user_email": user_email}))
     user_chunks = [c['text'] for c in user_chunks_docs]
 

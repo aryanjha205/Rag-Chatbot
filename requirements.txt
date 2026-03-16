@@ -5,7 +5,9 @@ PyPDF2
 requests
 jinja2
 scikit-learn
+numpy
 pymongo
 certifi
 pyjwt
 python-dotenv
+email-validator
