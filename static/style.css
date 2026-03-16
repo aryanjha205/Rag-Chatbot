@@ -446,3 +446,37 @@ body {
         min-height: 500px;
     }
 }
+
+@media (max-width: 600px) {
+    .header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+        text-align: center;
+    }
+    .logo {
+        font-size: 1.5rem;
+    }
+    .stats-badge {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.8rem;
+    }
+    .message {
+        max-width: 95%;
+    }
+    .msg-bubble {
+        padding: 0.8rem 1rem;
+        font-size: 0.9rem;
+    }
+    .upload-zone {
+        padding: 1.5rem 1rem;
+    }
+    .chat-section {
+        padding: 1rem;
+        min-height: 400px;
+    }
+    .chat-typing {
+        left: 1rem;
+        bottom: 5rem;
+    }
+}

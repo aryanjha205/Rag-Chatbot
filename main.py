@@ -14,7 +14,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from PyPDF2 import PdfReader
-from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -35,13 +36,12 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 # Global State for Document Indexing
 # We use an in-memory approach for lightweight execution.
 document_chunks = []
-chunk_embeddings = None
 processed_files = set()
 total_uploaded_files = 0
 
-logger.info("Loading SentenceTransformer model... This may take a moment on the first run.")
-embedder = SentenceTransformer('all-MiniLM-L6-v2')
-logger.info("Model loaded successfully.")
+logger.info("Initializing vectorizer")
+vectorizer = TfidfVectorizer()
+tfidf_matrix = None
 
 def split_text(text: str, chunk_size: int = 800, overlap: int = 150) -> List[str]:
     """Splits text into chunks of specified size with overlap."""
@@ -76,14 +76,14 @@ def extract_text(file_content: bytes, filename: str) -> str:
                 logger.error(f"Error reading text file {filename}: {e}")
     return text
 
-def cosine_similarity(query_emb: np.ndarray, chunk_embs: np.ndarray) -> np.ndarray:
-    """Computes cosine similarity between query embedding and multiple chunk embeddings."""
-    query_norm = np.linalg.norm(query_emb)
-    chunk_norms = np.linalg.norm(chunk_embs, axis=1)
-    # Prevent division by zero
-    norms = chunk_norms * query_norm
-    norms[norms == 0] = 1e-10
-    return np.dot(chunk_embs, query_emb) / norms
+def calculate_similarity(query: str):
+    """Computes cosine similarity between query and the document chunks."""
+    if not document_chunks or tfidf_matrix is None:
+        return []
+    
+    query_vec = vectorizer.transform([query])
+    similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
+    return similarities
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index(request: Request):
@@ -107,7 +107,7 @@ async def get_stats():
 
 @app.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
-    global document_chunks, chunk_embeddings, processed_files, total_uploaded_files
+    global document_chunks, processed_files, total_uploaded_files, tfidf_matrix, vectorizer
     
     new_chunks_count = 0
     new_files_count = 0
@@ -125,20 +125,15 @@ async def upload_files(files: List[UploadFile] = File(...)):
             
         chunks = split_text(text)
         if chunks:
-            # Create embeddings for new chunks
-            embeddings = embedder.encode(chunks)
-            
-            # Cumulative updates
-            if chunk_embeddings is None:
-                chunk_embeddings = np.array(embeddings).astype('float32')
-            else:
-                chunk_embeddings = np.vstack([chunk_embeddings, np.array(embeddings).astype('float32')])
-                
             document_chunks.extend(chunks)
             processed_files.add(file.filename)
             new_chunks_count += len(chunks)
             new_files_count += 1
             total_uploaded_files += 1
+            
+    # Recreate the TF-IDF matrix for all chunks to update vocabulary
+    if document_chunks:
+        tfidf_matrix = vectorizer.fit_transform(document_chunks)
 
     return JSONResponse({
         "message": f"Successfully processed {new_files_count} new files.",
@@ -149,17 +144,15 @@ async def upload_files(files: List[UploadFile] = File(...)):
 
 @app.post("/chat")
 async def chat(question: str = Form(...)):
-    global document_chunks, chunk_embeddings
+    global document_chunks, tfidf_matrix
     
-    if chunk_embeddings is None or len(document_chunks) == 0:
+    if tfidf_matrix is None or len(document_chunks) == 0:
         return JSONResponse({"answer": "I have no documents indexed. Please upload some files first."})
         
     try:
-        # Create embedding for the given question
-        question_embedding = embedder.encode([question])[0].astype('float32')
+        similarities = calculate_similarity(question)
         
-        # Calculate similarity and find top k
-        similarities = cosine_similarity(question_embedding, chunk_embeddings)
+        # Find top k matches
         k = min(5, len(document_chunks))
         top_k_indices = np.argsort(similarities)[::-1][:k]
         
