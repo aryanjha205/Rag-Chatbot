@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexGen RAG Assistant</title>
+    <!-- Google Fonts for Modern Appearance -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0F172A">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+</head>
+<body>
+    
+    <!-- Animated Background Gradients -->
+    <div class="bg-shape shape-1"></div>
+    <div class="bg-shape shape-2"></div>
+    <div class="bg-shape shape-3"></div>
+
+    <main class="app-container">
+        
+        <header class="header">
+            <h1 class="logo">NexGen <span>RAG Analyst</span></h1>
+            <div class="stats-badge" id="statsBadge">
+                <span class="pulse-dot"></span>
+                <span id="statsText">0 files / 0 chunks indexed</span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Sidebar: Upload Section -->
+            <aside class="upload-sidebar glass-panel">
+                <div class="upload-header">
+                    <h2>Knowledge Base</h2>
+                    <p>Upload PDFs or text files to build your AI's context.</p>
+                </div>
+                
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" id="fileInput" multiple accept=".pdf,.txt" style="display:none">
+                    <div class="upload-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    </div>
+                    <span>Drag & Drop or <span class="highlight">Click to Browse</span></span>
+                    <span class="file-types">Supports .PDF, .TXT</span>
+                </div>
+
+                <div class="upload-progress hidden" id="uploadProgress">
+                    <div class="spinner"></div>
+                    <span>Indexing Documents...</span>
+                </div>
+                
+                <div id="uploadStatus" class="status-msg"></div>
+            </aside>
+
+            <!-- Chat Section -->
+            <section class="chat-section glass-panel">
+                <div class="chat-history" id="chatHistory">
+                    <div class="message system-msg">
+                        <div class="avatar">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                        </div>
+                        <div class="msg-bubble">
+                            Welcome! Upload some documents to the Knowledge Base, then ask me anything about them.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-wrapper">
+                    <textarea id="questionInput" placeholder="Ask a question..." rows="1" autofocus></textarea>
+                    <button class="send-btn" id="sendBtn" title="Send Question">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </div>
+                <div class="chat-typing hidden" id="chatTyping">
+                    RAG Analyst is retrieving information...
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/static/script.js"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            })
+            .catch(err => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+      }
+    </script>
+</body>
+</html>
