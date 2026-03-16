@@ -99,10 +99,11 @@ async def serve_manifest():
 
 @app.get("/stats")
 async def get_stats():
-    global total_uploaded_files, document_chunks
+    global total_uploaded_files, document_chunks, processed_files
     return JSONResponse({
         "files": total_uploaded_files,
-        "chunks": len(document_chunks)
+        "chunks": len(document_chunks),
+        "file_list": list(processed_files)
     })
 
 @app.post("/upload")

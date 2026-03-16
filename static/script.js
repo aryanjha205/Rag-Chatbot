@@ -8,13 +8,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const statsText = document.getElementById('statsText');
     const statsBadge = document.getElementById('statsBadge');
 
+    const uploadedFilesList = document.getElementById('uploadedFilesList');
+    const fileCountBadge = document.getElementById('fileCountBadge');
+    
     const chatHistory = document.getElementById('chatHistory');
     const questionInput = document.getElementById('questionInput');
     const sendBtn = document.getElementById('sendBtn');
     const chatTyping = document.getElementById('chatTyping');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
     // --- State Initialization ---
+    loadChatHistory();
     updateStats();
+
+    clearHistoryBtn.addEventListener('click', () => {
+        localStorage.removeItem('rag_chat_history');
+        // Keep the welcome message, remove others
+        while (chatHistory.children.length > 1) {
+            chatHistory.removeChild(chatHistory.lastChild);
+        }
+    });
 
     // --- Upload Logic ---
     uploadZone.addEventListener('click', () => fileInput.click());
@@ -72,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (response.ok) {
                 showStatus(data.message, 'success');
-                updateStatsUI(data.total_files, data.total_chunks);
+                updateStats(); // Update stats dynamically so GUI displays the new array map
             } else {
                 showStatus(data.detail || 'Upload failed.', 'error');
             }
@@ -138,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function appendMessage(role, text) {
+    function appendMessage(role, text, save=true) {
         const msgWrapper = document.createElement('div');
         msgWrapper.className = `message ${role}-msg`;
 
@@ -157,6 +170,21 @@ document.addEventListener("DOMContentLoaded", () => {
         
         chatHistory.appendChild(msgWrapper);
         chatHistory.scrollTop = chatHistory.scrollHeight;
+
+        if (save) {
+            saveChatMessage(role, text);
+        }
+    }
+
+    function saveChatMessage(role, text) {
+        let history = JSON.parse(localStorage.getItem('rag_chat_history') || '[]');
+        history.push({role, text});
+        localStorage.setItem('rag_chat_history', JSON.stringify(history));
+    }
+
+    function loadChatHistory() {
+        let history = JSON.parse(localStorage.getItem('rag_chat_history') || '[]');
+        history.forEach(msg => appendMessage(msg.role, msg.text, false));
     }
 
     function escapeHTML(str) {
@@ -178,19 +206,30 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const response = await fetch('/stats');
             const data = await response.json();
-            updateStatsUI(data.files, data.chunks);
+            updateStatsUI(data.files, data.chunks, data.file_list || []);
         } catch (e) {
             console.error("Could not fetch stats", e);
         }
     }
 
-    function updateStatsUI(files, chunks) {
+    function updateStatsUI(files, chunks, fileList) {
         if (files === 0) {
             statsText.textContent = "0 files / 0 chunks indexed";
             statsBadge.style.opacity = '0.5';
+            fileCountBadge.textContent = '0';
+            uploadedFilesList.innerHTML = '<li class="empty-list">No files indexed yet.</li>';
         } else {
             statsText.textContent = `${files} files / ${chunks} chunks indexed`;
             statsBadge.style.opacity = '1';
+            fileCountBadge.textContent = files;
+
+            uploadedFilesList.innerHTML = '';
+            fileList.forEach(file => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                li.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> ${escapeHTML(file)}`;
+                uploadedFilesList.appendChild(li);
+            });
         }
     }
 
