@@ -733,7 +733,7 @@ body {
 }
 
 .msg-bubble {
-    padding: 1rem 1.25rem 1.75rem 1.25rem; /* Extra bottom padding for copy button */
+    padding: 1rem 1.25rem 2rem 1.25rem; /* Sufficient bottom padding */
     border-radius: 20px;
     font-size: 0.95rem;
     line-height: 1.6;
@@ -741,6 +741,9 @@ body {
     word-break: break-word;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     position: relative;
+    user-select: text; /* Allow manual selection/copy */
+    -webkit-user-select: text;
+    overflow-x: auto; /* Prevent long strings from breaking layout */
 }
 
 .msg-actions {
@@ -990,14 +993,15 @@ body {
     .chat-history {
         flex: 1;
         overflow-y: auto;
-        padding-bottom: 100px; /* Adjusted padding */
-        mask-image: linear-gradient(to bottom, transparent, black 5%, black 85%, transparent);
-        -webkit-mask-image: linear-gradient(to bottom, transparent, black 1%, black 90%, transparent);
+        padding-bottom: calc(120px + env(safe-area-inset-bottom));
+        mask-image: linear-gradient(to bottom, transparent, black 1%, black 95%, transparent);
+        -webkit-mask-image: linear-gradient(to bottom, transparent, black 1%, black 95%, transparent);
     }
     
     .chat-input-wrapper {
         position: fixed;
-        bottom: 70px; /* Sitting on top of 70px nav */
+        bottom: 70px; /* Aligned with 70px nav */
+        bottom: calc(70px + env(safe-area-inset-bottom));
         left: 0;
         right: 0;
         margin: 0;
@@ -1005,9 +1009,11 @@ body {
         border: none;
         border-top: 1px solid var(--glass-border);
         background: var(--panel-bg);
-        padding: 0.75rem 1rem;
+        padding: 0.5rem 0.75rem;
         z-index: 50;
         backdrop-filter: blur(20px);
+        display: flex;
+        align-items: center;
     }
 
     .msg-actions {
@@ -1019,7 +1025,7 @@ body {
     }
 
     .chat-typing {
-        bottom: 150px;
+        bottom: calc(145px + env(safe-area-inset-bottom));
         left: 1.5rem;
     }
 
