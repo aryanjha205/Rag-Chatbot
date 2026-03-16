@@ -323,6 +323,19 @@ async def upload_files(files: List[UploadFile] = File(...), user_email: str = De
         "new_chunks": new_chunks_count
     })
 
+@app.delete("/delete/{filename}")
+async def delete_file(filename: str, user_email: str = Depends(get_current_user)):
+    if files_collection is None or chunks_collection is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    
+    try:
+        files_collection.delete_one({"filename": filename, "user_email": user_email})
+        chunks_collection.delete_many({"filename": filename, "user_email": user_email})
+        return JSONResponse({"message": f"Successfully deleted {filename}"})
+    except Exception as e:
+        logger.error(f"Delete error: {e}")
+        raise HTTPException(status_code=500, detail="Error deleting file.")
+
 @app.post("/chat")
 async def chat(question: str = Form(...), user_email: str = Depends(get_current_user)):
     if chunks_collection is None:
