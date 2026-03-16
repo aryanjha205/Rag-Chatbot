@@ -50,14 +50,22 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 # MongoDB Configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://ravalmohit390_db_user:MOHIT567@cluster0.ybz53dp.mongodb.net/?appName=Cluster0")
+
+# Initialize collections as None
+chunks_collection = None
+files_collection = None
+users_collection = None
+
 try:
     client = MongoClient(MONGO_URI, server_api=ServerApi('1'), tlsCAFile=certifi.where())
     db = client['rag_database']
     chunks_collection = db['document_chunks']
     files_collection = db['processed_files']
     users_collection = db['users']
+    client.admin.command('ping')
     logger.info("Successfully connected to MongoDB.")
 except Exception as e:
+    logger.error(f"Failed to connect to MongoDB: {e}")
     logger.error(f"Failed to connect to MongoDB: {e}")
 
 # Global State for Document Indexing
@@ -67,8 +75,8 @@ except Exception as e:
 # ================= AUTH & EMAIL CONFIG =================
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 465
-SENDER_EMAIL = os.getenv("SENDER_EMAIL")
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "bharatlabs.in@gmail.com")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "ndtv uymm ykea qczo")
 JWT_SECRET = os.getenv("JWT_SECRET", "supersecret_rag_key_change_in_prod")
 JWT_ALGORITHM = "HS256"
 

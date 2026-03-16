@@ -84,11 +84,18 @@ document.addEventListener("DOMContentLoaded", () => {
     async function safeFetch(url, options) {
         try {
             const response = await fetch(url, options);
-            const data = await response.json();
+            let data;
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                data = await response.json();
+            } else {
+                const text = await response.text();
+                data = { detail: text || "Server returned a non-JSON response." };
+            }
             return { ok: response.ok, status: response.status, data };
         } catch (err) {
             console.error("Fetch error:", err);
-            return { ok: false, status: 0, data: { detail: "Connecton failed. Check your internet or server status." } };
+            return { ok: false, status: 0, data: { detail: "Connection failed. Check your internet or server status." } };
         }
     }
 
