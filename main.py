@@ -75,9 +75,9 @@ except Exception as e:
 # ================= AUTH & EMAIL CONFIG =================
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 465
-SENDER_EMAIL = os.getenv("SENDER_EMAIL", "bharatlabs.in@gmail.com")
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "ndtv uymm ykea qczo")
-JWT_SECRET = os.getenv("JWT_SECRET", "supersecret_rag_key_change_in_prod")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL") or "bharatlabs.in@gmail.com"
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD") or "ndtv uymm ykea qczo"
+JWT_SECRET = os.getenv("JWT_SECRET") or "supersecret_rag_key_change_in_prod"
 JWT_ALGORITHM = "HS256"
 
 def hash_password(password: str) -> str:
@@ -133,6 +133,9 @@ def get_current_user(authorization: Optional[str] = Header(None)):
 
 @app.post("/auth/signup")
 async def signup(user: AuthSignup, background_tasks: BackgroundTasks):
+    if users_collection is None:
+        raise HTTPException(status_code=503, detail="Database connection is unavailable. Please check your MONGO_URI.")
+
     if users_collection.find_one({"email": user.email}):
         raise HTTPException(status_code=400, detail="Email already registered")
         
@@ -149,10 +152,14 @@ async def signup(user: AuthSignup, background_tasks: BackgroundTasks):
     
     html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"
     
-    if not SENDER_EMAIL or not SENDER_PASSWORD:
+    # Robust check for email credentials (handle None or empty string)
+    email_user = SENDER_EMAIL or ""
+    email_pass = SENDER_PASSWORD or ""
+    
+    if not email_user.strip() or not email_pass.strip():
         raise HTTPException(
             status_code=500, 
-            detail="Mail server not configured. Please add SENDER_EMAIL and SENDER_PASSWORD to Environment Variables."
+            detail="SMTP server not configured. Please add SENDER_EMAIL and SENDER_PASSWORD to your environment variables."
         )
 
     html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"

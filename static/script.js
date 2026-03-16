@@ -125,7 +125,8 @@ document.addEventListener("DOMContentLoaded", () => {
             verifyStatus.textContent = "Check your inbox for the OTP.";
             verifyStatus.className = "auth-status success";
         } else {
-            signupStatus.textContent = status === 500 ? "Server Error (Maybe SMTP is not configured)" : (data.detail || "Signup failed");
+            // Show the actual detail from the server if available
+            signupStatus.textContent = data.detail || "Signup failed. Please try again later.";
             signupStatus.className = "auth-status error";
         }
     });
