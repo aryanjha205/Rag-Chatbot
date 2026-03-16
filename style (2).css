@@ -1,0 +1,17 @@
+{
+  "name": "NexGen RAG Analyst",
+  "short_name": "RAG Analyst",
+  "description": "Advanced multi-file RAG chatbot",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#0F172A",
+  "icons": [
+    {
+      "src": "/static/icon.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
