@@ -1001,7 +1001,7 @@ body {
     
     .chat-input-wrapper {
         position: fixed;
-        bottom: calc(85px + env(safe-area-inset-bottom));
+        bottom: calc(78px + env(safe-area-inset-bottom));
         left: 1rem;
         right: 1rem;
         width: auto;
@@ -1035,7 +1035,7 @@ body {
 
     .chat-typing {
         position: fixed;
-        bottom: calc(145px + env(safe-area-inset-bottom));
+        bottom: calc(138px + env(safe-area-inset-bottom));
         left: 2rem;
         z-index: 60;
         background: rgba(0,0,0,0.4);
