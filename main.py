@@ -8,6 +8,10 @@ import json
 import logging
 import requests
 import certifi
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 import numpy as np
 import smtplib
 from email.mime.text import MIMEText
@@ -45,7 +49,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 # MongoDB Configuration
-MONGO_URI = "mongodb+srv://ravalmohit390_db_user:MOHIT567@cluster0.ybz53dp.mongodb.net/?appName=Cluster0"
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://ravalmohit390_db_user:MOHIT567@cluster0.ybz53dp.mongodb.net/?appName=Cluster0")
 try:
     client = MongoClient(MONGO_URI, server_api=ServerApi('1'), tlsCAFile=certifi.where())
     db = client['rag_database']
@@ -63,9 +67,9 @@ except Exception as e:
 # ================= AUTH & EMAIL CONFIG =================
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SENDER_EMAIL = "bharatlabs.in@gmail.com"
-SENDER_PASSWORD = "ndtv uymm ykea qczo"
-JWT_SECRET = "supersecret_rag_key_change_in_prod"
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "bharatlabs.in@gmail.com")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "ndtv uymm ykea qczo")
+JWT_SECRET = os.getenv("JWT_SECRET", "supersecret_rag_key_change_in_prod")
 JWT_ALGORITHM = "HS256"
 
 def hash_password(password: str) -> str:
