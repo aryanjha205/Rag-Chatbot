@@ -18,6 +18,11 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const logoutBtn = document.getElementById('logoutBtn');
 
+    // --- Buttons for loading states ---
+    const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+    const signupSubmitBtn = document.getElementById('signupSubmitBtn');
+    const verifySubmitBtn = document.getElementById('verifySubmitBtn');
+
     // --- UI Elements ---
     const uploadZone = document.getElementById('uploadZone');
     const fileInput = document.getElementById('fileInput');
@@ -37,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- State & Auth Logic ---
     let authToken = localStorage.getItem('rag_token');
-    let verifyEmail = ""; // Temporary storage for OTP verification
+    let verifyEmail = ""; 
 
     checkAuth();
 
@@ -67,14 +72,25 @@ document.addEventListener("DOMContentLoaded", () => {
     showSignup.addEventListener('click', () => {
         loginForm.classList.add('hidden');
         signupForm.classList.remove('hidden');
-        authSubtitle.textContent = "Create a new account";
+        authSubtitle.textContent = "Start your journey today";
     });
 
     showLogin.addEventListener('click', () => {
         signupForm.classList.add('hidden');
         loginForm.classList.remove('hidden');
-        authSubtitle.textContent = "Login to access your workspace";
+        authSubtitle.textContent = "Login to your workspace";
     });
+
+    async function safeFetch(url, options) {
+        try {
+            const response = await fetch(url, options);
+            const data = await response.json();
+            return { ok: response.ok, status: response.status, data };
+        } catch (err) {
+            console.error("Fetch error:", err);
+            return { ok: false, status: 0, data: { detail: "Connecton failed. Check your internet or server status." } };
+        }
+    }
 
     // --- Signup ---
     signupForm.addEventListener('submit', async (e) => {
@@ -82,29 +98,28 @@ document.addEventListener("DOMContentLoaded", () => {
         const email = document.getElementById('signupEmail').value;
         const password = document.getElementById('signupPassword').value;
         
-        signupStatus.textContent = "Sending OTP...";
-        signupStatus.className = "auth-status";
+        signupStatus.textContent = "Sending security code...";
+        signupStatus.className = "auth-status success";
+        signupSubmitBtn.classList.add('loading');
 
-        try {
-            const response = await fetch('/auth/signup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-            const data = await response.json();
-            
-            if (response.ok) {
-                verifyEmail = email;
-                signupForm.classList.add('hidden');
-                verifyForm.classList.remove('hidden');
-                authSubtitle.textContent = "Enter the code sent to your email";
-            } else {
-                signupStatus.textContent = data.detail || "Signup failed";
-                signupStatus.classList.add('error');
-            }
-        } catch (err) {
-            signupStatus.textContent = "Network error";
-            signupStatus.classList.add('error');
+        const { ok, status, data } = await safeFetch('/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        
+        signupSubmitBtn.classList.remove('loading');
+
+        if (ok) {
+            verifyEmail = email;
+            signupForm.classList.add('hidden');
+            verifyForm.classList.remove('hidden');
+            authSubtitle.textContent = `Verify your email: ${email}`;
+            verifyStatus.textContent = "Check your inbox for the OTP.";
+            verifyStatus.className = "auth-status success";
+        } else {
+            signupStatus.textContent = status === 500 ? "Server Error (Maybe SMTP is not configured)" : (data.detail || "Signup failed");
+            signupStatus.className = "auth-status error";
         }
     });
 
@@ -113,32 +128,29 @@ document.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
         const otp = document.getElementById('verifyOtp').value;
         
-        verifyStatus.textContent = "Verifying...";
-        verifyStatus.className = "auth-status";
+        verifyStatus.textContent = "Securing account...";
+        verifyStatus.className = "auth-status success";
+        verifySubmitBtn.classList.add('loading');
 
-        try {
-            const response = await fetch('/auth/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: verifyEmail, otp })
-            });
-            const data = await response.json();
-            
-            if (response.ok) {
-                verifyStatus.textContent = "Success! Please login.";
-                verifyStatus.classList.add('success');
-                setTimeout(() => {
-                    verifyForm.classList.add('hidden');
-                    loginForm.classList.remove('hidden');
-                    authSubtitle.textContent = "Login to access your workspace";
-                }, 2000);
-            } else {
-                verifyStatus.textContent = data.detail || "Verificaton failed";
-                verifyStatus.classList.add('error');
-            }
-        } catch (err) {
-            verifyStatus.textContent = "Network error";
-            verifyStatus.classList.add('error');
+        const { ok, data } = await safeFetch('/auth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: verifyEmail, otp })
+        });
+        
+        verifySubmitBtn.classList.remove('loading');
+
+        if (ok) {
+            verifyStatus.textContent = "Verified! Redirecting to login...";
+            verifyStatus.className = "auth-status success";
+            setTimeout(() => {
+                verifyForm.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+                authSubtitle.textContent = "Account active. Please login.";
+            }, 1500);
+        } else {
+            verifyStatus.textContent = data.detail || "Invalid code. Try again.";
+            verifyStatus.className = "auth-status error";
         }
     });
 
@@ -148,30 +160,27 @@ document.addEventListener("DOMContentLoaded", () => {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
         
-        loginStatus.textContent = "Logging in...";
-        loginStatus.className = "auth-status";
+        loginStatus.textContent = "Authorizing...";
+        loginStatus.className = "auth-status success";
+        loginSubmitBtn.classList.add('loading');
 
-        try {
-            const response = await fetch('/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-            const data = await response.json();
-            
-            if (response.ok) {
-                saveToken(data.access_token);
-            } else {
-                loginStatus.textContent = data.detail || "Login failed";
-                loginStatus.classList.add('error');
-            }
-        } catch (err) {
-            loginStatus.textContent = "Network error";
-            loginStatus.classList.add('error');
+        const { ok, status, data } = await safeFetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        
+        loginSubmitBtn.classList.remove('loading');
+
+        if (ok) {
+            saveToken(data.access_token);
+        } else {
+            loginStatus.textContent = status === 403 ? "Please verify your email first." : (data.detail || "Access denied.");
+            loginStatus.className = "auth-status error";
         }
     });
 
-    // --- App Logic (With Auth Headers) ---
+    // --- App Logic ---
 
     clearHistoryBtn.addEventListener('click', () => {
         localStorage.removeItem('rag_chat_history');
@@ -218,7 +227,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (validFiles === 0) {
-            showStatus('Please upload valid PDF or TXT files.', 'error');
+            showStatus('PDF or TXT required.', 'error');
             return;
         }
 
@@ -243,7 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 showStatus(data.detail || 'Upload failed.', 'error');
             }
         } catch (err) {
-            showStatus('Network error during upload.', 'error');
+            showStatus('Network error.', 'error');
         } finally {
             uploadProgress.classList.add('hidden');
         }
@@ -291,10 +300,10 @@ document.addEventListener("DOMContentLoaded", () => {
             } else if (response.status === 401) {
                 logoutBtn.click();
             } else {
-                appendMessage('system', 'Error: ' + (data.answer || 'Something went wrong.'));
+                appendMessage('system', 'Error: ' + (data.answer || 'Slow response.'));
             }
         } catch(err) {
-            appendMessage('system', 'System error contacting the server.');
+            appendMessage('system', 'System error.');
         } finally {
             sendBtn.disabled = false;
             chatTyping.classList.add('hidden');
@@ -331,7 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="avatar">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                 </div>
-                <div class="msg-bubble">Welcome to NexGen RAG Analyst. Upload your documents and start asking questions!</div>
+                <div class="msg-bubble">Welcome. Upload your files and ask away.</div>
             </div>
         `;
         let history = JSON.parse(localStorage.getItem('rag_chat_history') || '[]');
@@ -364,12 +373,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateStatsUI(files, chunks, fileList) {
         if (files === 0) {
-            statsText.textContent = "0 files / 0 chunks indexed";
+            statsText.textContent = "0 files / 0 chunks";
             statsBadge.style.opacity = '0.5';
             fileCountBadge.textContent = '0';
-            uploadedFilesList.innerHTML = '<li class="empty-list">No files indexed yet.</li>';
+            uploadedFilesList.innerHTML = '<li class="empty-list">No files indexed.</li>';
         } else {
-            statsText.textContent = `${files} files / ${chunks} chunks indexed`;
+            statsText.textContent = `${files} files / ${chunks} chunks`;
             statsBadge.style.opacity = '1';
             fileCountBadge.textContent = files;
 

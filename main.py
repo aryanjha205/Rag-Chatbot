@@ -22,7 +22,7 @@ import jwt
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
-from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, HTTPException, status, Header
+from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, HTTPException, status, Header, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -119,7 +119,7 @@ def get_current_user(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 @app.post("/auth/signup")
-async def signup(user: AuthSignup):
+async def signup(user: AuthSignup, background_tasks: BackgroundTasks):
     if users_collection.find_one({"email": user.email}):
         raise HTTPException(status_code=400, detail="Email already registered")
         
@@ -135,11 +135,16 @@ async def signup(user: AuthSignup):
     })
     
     html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"
-    send_email(user.email, "Your OTP Code", html_body)
+    
+    if SENDER_EMAIL and SENDER_PASSWORD:
+        background_tasks.add_task(send_email, user.email, "Your OTP Code", html_body)
+    else:
+        logger.warning("SMTP credentials not found. Email not sent.")
+        
     return {"message": "OTP sent to your email"}
 
 @app.post("/auth/verify")
-async def verify(data: AuthVerify):
+async def verify(data: AuthVerify, background_tasks: BackgroundTasks):
     user_db = users_collection.find_one({"email": data.email})
     if not user_db:
         raise HTTPException(status_code=404, detail="User not found")
@@ -151,7 +156,10 @@ async def verify(data: AuthVerify):
     users_collection.update_one({"email": data.email}, {"$set": {"is_verified": True}, "$unset": {"otp": "", "otp_expiry": ""}})
     
     html_body = "<h2>Verification Successful!</h2><p>Thank you for joining NexGen RAG Analyst. You can now login and start analyzing your documents.</p>"
-    send_email(data.email, "Thanks for joining!", html_body)
+    
+    if SENDER_EMAIL and SENDER_PASSWORD:
+        background_tasks.add_task(send_email, data.email, "Thanks for joining!", html_body)
+        
     return {"message": "Account verified successfully. You can now login."}
 
 @app.post("/auth/login")
