@@ -273,7 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
     questionInput.addEventListener('input', autoResizeTextarea);
 
     questionInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 600) {
             e.preventDefault();
             sendMessage();
         }
