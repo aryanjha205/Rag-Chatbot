@@ -994,29 +994,35 @@ body {
     .chat-history {
         flex: 1;
         overflow-y: auto;
-        padding-bottom: 2rem; /* Normal scrolling padding */
-        mask-image: linear-gradient(to bottom, transparent, black 1%, black 98%, transparent);
-        -webkit-mask-image: linear-gradient(to bottom, transparent, black 1%, black 98%, transparent);
+        padding-bottom: 160px; /* Space for the floating pill */
+        mask-image: linear-gradient(to bottom, transparent, black 1%, black 95%, transparent);
+        -webkit-mask-image: linear-gradient(to bottom, transparent, black 1%, black 95%, transparent);
     }
     
     .chat-input-wrapper {
-        position: relative; /* Back to normal flow */
-        bottom: 0;
-        left: 0;
-        right: 0;
-        margin: 0 -1.5rem -1.5rem -1.5rem; /* Remove sidebar padding */
-        width: calc(100% + 3rem);
-        border-radius: 0;
-        border: none;
-        border-top: 1px solid var(--glass-border);
-        background: var(--bg-color-main);
-        padding: 0.75rem 1.5rem;
-        z-index: 100;
-        backdrop-filter: blur(20px);
+        position: fixed;
+        bottom: calc(85px + env(safe-area-inset-bottom));
+        left: 1rem;
+        right: 1rem;
+        width: auto;
+        margin: 0;
+        border-radius: 28px;
+        border: 1px solid var(--glass-border);
+        background: var(--panel-bg);
+        padding: 6px 6px 6px 18px;
+        z-index: 1000;
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
         display: flex;
         align-items: flex-end;
-        box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
-        flex-shrink: 0;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.05);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .chat-input-wrapper:focus-within {
+        transform: translateY(-2px);
+        border-color: var(--accent-hover);
+        box-shadow: 0 20px 50px rgba(0,0,0,0.3);
     }
 
     .msg-actions {
@@ -1028,11 +1034,15 @@ body {
     }
 
     .chat-typing {
-        position: relative;
-        bottom: 0;
-        left: 0.5rem;
-        margin-bottom: 0.5rem;
+        position: fixed;
+        bottom: calc(145px + env(safe-area-inset-bottom));
+        left: 2rem;
         z-index: 60;
+        background: rgba(0,0,0,0.4);
+        padding: 4px 12px;
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+        font-size: 0.75rem;
     }
 
     /* Mobile Nav Bar Styling */
@@ -1145,7 +1155,14 @@ body.bright-mode .uploaded-files-section {
 body.bright-mode .chat-input-wrapper {
     background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
+    box-shadow: 0 15px 45px rgba(0,0,0,0.12) !important;
+}
+
+body.bright-mode .chat-typing {
+    background: rgba(255,255,255,0.8) !important;
+    color: #4f46e5 !important;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 body.bright-mode .upload-zone {
