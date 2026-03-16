@@ -72,12 +72,16 @@ try:
     users_collection = db['users']
     
     # Ensure unique index on email for fast lookups
-    users_collection.create_index("email", unique=True)
+    if users_collection is not None:
+        try:
+            users_collection.create_index("email", unique=True)
+            logger.info("Successfully ensured unique index on email.")
+        except Exception as idx_e:
+            logger.warning(f"Could not create unique index (might already exist): {idx_e}")
     
-    logger.info("Successfully connected to MongoDB and ensured indexes.")
+    logger.info("MongoDB client initialized.")
 except Exception as e:
-    logger.error(f"Failed to connect to MongoDB: {e}")
-    logger.error(f"Failed to connect to MongoDB: {e}")
+    logger.error(f"Critical MongoDB Initialization Error: {e}")
 
 # Global State for Document Indexing
 # Each user will have their chunks loaded into memory on-demand or filtered.
@@ -147,25 +151,30 @@ async def signup(user: AuthSignup, background_tasks: BackgroundTasks):
     if users_collection is None:
         raise HTTPException(status_code=503, detail="Database connection is unavailable. Please check your MONGO_URI.")
 
-    if users_collection.find_one({"email": user.email}):
-        raise HTTPException(status_code=400, detail="Email already registered")
+    try:
+        if users_collection.find_one({"email": user.email}):
+            raise HTTPException(status_code=400, detail="Email already registered")
+            
+        otp = str(secrets.randbelow(900000) + 100000)
+        hashed_pw = hash_password(user.password)
         
-    otp = str(secrets.randbelow(900000) + 100000)
-    hashed_pw = hash_password(user.password)
-    
-    users_collection.insert_one({
-        "email": user.email,
-        "password": hashed_pw,
-        "is_verified": False,
-        "otp": otp,
-        "otp_expiry": datetime.utcnow() + timedelta(minutes=15)
-    })
-    
-    html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"
-    
-    background_tasks.add_task(send_email, user.email, "Your OTP Code", html_body)
+        users_collection.insert_one({
+            "email": user.email,
+            "password": hashed_pw,
+            "is_verified": False,
+            "otp": otp,
+            "otp_expiry": datetime.utcnow() + timedelta(minutes=15)
+        })
         
-    return {"message": "OTP sent to your email"}
+        html_body = f"<h2>Welcome to RAG Analyst</h2><p>Your verification code is: <strong>{otp}</strong></p><p>This code expires in 15 minutes.</p>"
+        background_tasks.add_task(send_email, user.email, "Your OTP Code", html_body)
+            
+        return {"message": "OTP sent to your email"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Signup Database Error: {e}")
+        raise HTTPException(status_code=500, detail="Database error during signup. Check connection string.")
 
 @app.post("/auth/verify")
 async def verify(data: AuthVerify, background_tasks: BackgroundTasks):
