@@ -708,7 +708,11 @@ body {
 }
 
 .system-msg { align-self: flex-start; }
-.user-msg { align-self: flex-end; flex-direction: row-reverse; }
+.user-msg { 
+    align-self: flex-end; 
+    flex-direction: row-reverse;
+    margin-left: auto;
+}
 
 .avatar {
     width: 38px;
@@ -733,33 +737,32 @@ body {
 }
 
 .msg-bubble {
-    padding: 1rem 1.25rem 2rem 1.25rem; /* Sufficient bottom padding */
-    border-radius: 20px;
+    padding: 0.9rem 1.1rem;
+    border-radius: 18px;
     font-size: 0.95rem;
-    line-height: 1.6;
-    letter-spacing: 0.2px;
+    line-height: 1.5;
     word-break: break-word;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     position: relative;
-    user-select: text; /* Allow manual selection/copy */
+    user-select: text;
     -webkit-user-select: text;
-    overflow-x: auto; /* Prevent long strings from breaking layout */
+    transition: all 0.3s ease;
 }
 
 .msg-actions {
     position: absolute;
-    bottom: -1rem;
-    right: 0.5rem;
+    bottom: -8px;
+    right: 12px;
     display: flex;
     gap: 0.5rem;
     opacity: 0;
     transition: all 0.2s ease;
-    z-index: 10;
+    z-index: 20;
 }
 
 .message:hover .msg-actions {
     opacity: 1;
-    bottom: -0.5rem;
+    bottom: -12px;
 }
 
 .msg-copy-btn {
@@ -788,17 +791,18 @@ body {
 }
 
 .system-msg .msg-bubble {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-top-left-radius: 4px;
-    color: #e5e7eb;
+    color: var(--text-primary);
 }
 
 .user-msg .msg-bubble {
-    background: linear-gradient(135deg, rgba(79, 70, 229, 0.15), rgba(99, 102, 241, 0.05));
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: linear-gradient(135deg, var(--gradient-1), var(--accent-color));
+    color: white;
+    border: none;
     border-top-right-radius: 4px;
-    color: #fff;
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.2);
 }
 
 .chat-input-wrapper {
@@ -994,29 +998,30 @@ body {
     .chat-history {
         flex: 1;
         overflow-y: auto;
-        padding-bottom: 160px; /* Space for the floating pill */
+        padding-bottom: 180px; /* More space for the floating pill */
+        padding-top: 1rem;
         mask-image: linear-gradient(to bottom, transparent, black 1%, black 95%, transparent);
         -webkit-mask-image: linear-gradient(to bottom, transparent, black 1%, black 95%, transparent);
     }
     
     .chat-input-wrapper {
         position: fixed;
-        bottom: calc(78px + env(safe-area-inset-bottom));
-        left: 1rem;
-        right: 1rem;
+        bottom: calc(75px + env(safe-area-inset-bottom));
+        left: 0.75rem;
+        right: 0.75rem;
         width: auto;
         margin: 0;
-        border-radius: 28px;
+        border-radius: 24px;
         border: 1px solid var(--glass-border);
         background: var(--panel-bg);
-        padding: 6px 6px 6px 18px;
+        padding: 4px 4px 4px 14px;
         z-index: 1000;
-        backdrop-filter: blur(25px);
-        -webkit-backdrop-filter: blur(25px);
+        backdrop-filter: blur(30px) saturate(150%);
+        -webkit-backdrop-filter: blur(30px) saturate(150%);
         display: flex;
         align-items: flex-end;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.05);
-        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
     }
 
     .chat-input-wrapper:focus-within {
@@ -1127,10 +1132,10 @@ body.bright-mode .system-msg .msg-bubble {
 }
 
 body.bright-mode .user-msg .msg-bubble {
-    background: #4f46e5 !important;
+    background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
     color: #ffffff !important;
     border: none !important;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2) !important;
+    box-shadow: 0 10px 25px rgba(79, 70, 229, 0.25) !important;
 }
 
 body.bright-mode .user-msg .avatar {

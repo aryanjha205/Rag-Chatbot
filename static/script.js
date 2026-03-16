@@ -340,7 +340,16 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
         
         chatHistory.appendChild(msgWrapper);
-        chatHistory.scrollTop = chatHistory.scrollHeight;
+        
+        // Use requestAnimationFrame for smoother scrolling after DOM update
+        requestAnimationFrame(() => {
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        });
+        
+        // Double-check scroll after a tiny delay for mobile rendering
+        setTimeout(() => {
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }, 50);
 
         // Message-level copy logic
         const copyBtn = msgWrapper.querySelector('.msg-copy-btn');
