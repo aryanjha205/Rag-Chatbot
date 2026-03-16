@@ -733,7 +733,7 @@ body {
 }
 
 .msg-bubble {
-    padding: 1.2rem 1.4rem;
+    padding: 1rem 1.25rem 1.75rem 1.25rem; /* Extra bottom padding for copy button */
     border-radius: 20px;
     font-size: 0.95rem;
     line-height: 1.6;
@@ -990,26 +990,37 @@ body {
     .chat-history {
         flex: 1;
         overflow-y: auto;
-        padding-bottom: 120px; /* Big padding so messages scroll ABOVE input */
+        padding-bottom: 100px; /* Adjusted padding */
         mask-image: linear-gradient(to bottom, transparent, black 5%, black 85%, transparent);
         -webkit-mask-image: linear-gradient(to bottom, transparent, black 1%, black 90%, transparent);
     }
     
     .chat-input-wrapper {
         position: fixed;
-        bottom: 75px; /* Right above mobile nav (70px) */
-        left: 1rem;
-        right: 1rem;
-        margin-top: 0;
+        bottom: 70px; /* Sitting on top of 70px nav */
+        left: 0;
+        right: 0;
+        margin: 0;
+        border-radius: 0;
+        border: none;
+        border-top: 1px solid var(--glass-border);
+        background: var(--panel-bg);
+        padding: 0.75rem 1rem;
         z-index: 50;
-        background: var(--card-bg);
-        box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+        backdrop-filter: blur(20px);
+    }
+
+    .msg-actions {
+        opacity: 1 !important;
+        visibility: visible !important;
+        bottom: 0.5rem !important;
+        right: 0.5rem !important;
+        display: flex !important;
     }
 
     .chat-typing {
-        bottom: 140px;
-        left: 2rem;
-        z-index: 60;
+        bottom: 150px;
+        left: 1.5rem;
     }
 
     /* Mobile Nav Bar Styling */
