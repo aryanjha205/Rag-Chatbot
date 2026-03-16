@@ -651,6 +651,11 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+.chat-controls {
+    display: flex;
+    gap: 0.75rem;
+}
+
 .chat-header h2 {
     font-family: var(--app-font);
     font-size: 1.3rem;
@@ -735,6 +740,48 @@ body {
     letter-spacing: 0.2px;
     word-break: break-word;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+.msg-actions {
+    position: absolute;
+    bottom: -1rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.message:hover .msg-actions {
+    opacity: 1;
+    bottom: -0.5rem;
+}
+
+.msg-copy-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-secondary);
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.msg-copy-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--accent-hover);
+}
+
+.msg-copy-btn.copied {
+    color: var(--success-color);
+    border-color: var(--success-color);
 }
 
 .system-msg .msg-bubble {
@@ -913,7 +960,7 @@ body {
         padding: 1.5rem;
         background: var(--bg-color-main);
         transition: opacity 0.3s ease, transform 0.3s ease;
-        overflow-y: auto;
+        overflow: hidden; /* Prevent section itself from scrolling */
     }
 
     /* Tab Switch Logic on Mobile */
@@ -925,7 +972,8 @@ body {
 
     .upload-header, .chat-header {
         text-align: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
+        flex-shrink: 0;
     }
 
     .upload-header h2, .chat-header h2 {
@@ -936,23 +984,32 @@ body {
     .chat-section {
         display: flex;
         flex-direction: column;
-        padding-bottom: 90px;
+        padding-bottom: 0; /* Reset */
     }
 
-    .chat-history { flex: 1; }
+    .chat-history {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: 120px; /* Big padding so messages scroll ABOVE input */
+        mask-image: linear-gradient(to bottom, transparent, black 5%, black 85%, transparent);
+        -webkit-mask-image: linear-gradient(to bottom, transparent, black 1%, black 90%, transparent);
+    }
     
     .chat-input-wrapper {
         position: fixed;
-        bottom: 5rem;
+        bottom: 75px; /* Right above mobile nav (70px) */
         left: 1rem;
         right: 1rem;
         margin-top: 0;
         z-index: 50;
+        background: var(--card-bg);
+        box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
     }
 
     .chat-typing {
-        bottom: 9rem;
+        bottom: 140px;
         left: 2rem;
+        z-index: 60;
     }
 
     /* Mobile Nav Bar Styling */
@@ -1006,34 +1063,47 @@ body {
     .msg-bubble { font-size: 0.85rem; padding: 0.8rem 1rem; }
 }
 
-/* Global Bright Mode Overrides (Must be at the end) */
+/* Global Bright Mode Overrides (High Contrast) */
+body.bright-mode {
+    --bg-color-main: #f0f2f5;
+    --card-bg: #ffffff;
+    --card-border: rgba(99, 102, 241, 0.2);
+    --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --panel-bg: rgba(255, 255, 255, 0.95);
+    --glass-border: rgba(99, 102, 241, 0.15);
+}
+
 body.bright-mode .upload-header h2,
 body.bright-mode .chat-header h2,
 body.bright-mode .section-title h3,
 body.bright-mode .auth-title.logo,
 body.bright-mode .chat-typing,
-body.bright-mode .auth-subtitle {
-    color: var(--text-primary) !important;
+body.bright-mode .auth-subtitle,
+body.bright-mode .logo,
+body.bright-mode .upload-header p {
+    color: #0f172a !important;
 }
 
 body.bright-mode .system-msg .msg-bubble {
-    background: #ffffff !important;
+    background: #e2e8f0 !important;
     color: #1e293b !important;
-    border: 1px solid rgba(0, 0, 0, 0.08) !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
 }
 
 body.bright-mode .user-msg .msg-bubble {
-    background: #6366f1 !important;
+    background: #4f46e5 !important;
     color: #ffffff !important;
     border: none !important;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2) !important;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2) !important;
 }
 
 body.bright-mode .user-msg .avatar {
-    background: rgba(0, 0, 0, 0.05) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid rgba(0,0,0,0.05) !important;
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #e2e8f0 !important;
 }
 
 body.bright-mode #questionInput {
@@ -1041,21 +1111,68 @@ body.bright-mode #questionInput {
 }
 
 body.bright-mode #questionInput::placeholder {
-    color: rgba(15, 23, 42, 0.4) !important;
+    color: #64748b !important;
 }
 
 body.bright-mode .uploaded-files-section {
-    background: rgba(0, 0, 0, 0.02) !important;
-    border-color: rgba(0, 0, 0, 0.05) !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
 }
 
 body.bright-mode .chat-input-wrapper {
-    background: rgba(255, 255, 255, 1) !important;
-    border-color: rgba(0, 0, 0, 0.1) !important;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.05) !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05) !important;
+}
+
+body.bright-mode .upload-zone {
+    background: #f1f5f9 !important;
+    border: 2px dashed #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.bright-mode .upload-zone span {
+    color: #0f172a !important;
+}
+
+body.bright-mode .stats-badge {
+    background: #dcfce7 !important;
+    border-color: #86efac !important;
+    color: #166534 !important;
+}
+
+body.bright-mode .pulse-dot {
+    background: #22c55e !important;
 }
 
 body.bright-mode .auth-form input {
-    color: #000 !important;
-    background: rgba(0, 0, 0, 0.03) !important;
+    color: #0f172a !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+body.bright-mode .action-btn {
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #475569 !important;
+}
+
+body.bright-mode .action-btn:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+body.bright-mode .file-item {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #1e293b !important;
+}
+
+body.bright-mode .file-delete-btn {
+    color: #94a3b8 !important;
+}
+
+body.bright-mode .file-delete-btn:hover {
+    color: #ef4444 !important;
+    background: #fee2e2 !important;
 }
