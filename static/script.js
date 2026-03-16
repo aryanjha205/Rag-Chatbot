@@ -345,14 +345,35 @@ document.addEventListener("DOMContentLoaded", () => {
         // Message-level copy logic
         const copyBtn = msgWrapper.querySelector('.msg-copy-btn');
         copyBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(text).then(() => {
+            const copyToClipboard = (str) => {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    return navigator.clipboard.writeText(str);
+                }
+                // Fallback for older browsers/mobile
+                const el = document.createElement('textarea');
+                el.value = str;
+                el.setAttribute('readonly', '');
+                el.style.position = 'absolute';
+                el.style.left = '-9999px';
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                return Promise.resolve();
+            };
+
+            copyToClipboard(text).then(() => {
                 copyBtn.classList.add('copied');
                 const originalIcon = copyBtn.innerHTML;
                 copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                
+                // Optional: Toast notification or status
                 setTimeout(() => {
                     copyBtn.classList.remove('copied');
                     copyBtn.innerHTML = originalIcon;
                 }, 2000);
+            }).catch(err => {
+                console.error('Could not copy text: ', err);
             });
         });
 

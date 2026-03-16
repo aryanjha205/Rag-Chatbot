@@ -733,7 +733,7 @@ body {
 }
 
 .msg-bubble {
-    padding: 1.2rem 1.4rem;
+    padding: 1rem 1.25rem 2rem 1.25rem; /* Sufficient bottom padding */
     border-radius: 20px;
     font-size: 0.95rem;
     line-height: 1.6;
@@ -741,6 +741,9 @@ body {
     word-break: break-word;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     position: relative;
+    user-select: text; /* Allow manual selection/copy */
+    -webkit-user-select: text;
+    overflow-x: auto; /* Prevent long strings from breaking layout */
 }
 
 .msg-actions {
@@ -960,7 +963,7 @@ body {
         padding: 1.5rem;
         background: var(--bg-color-main);
         transition: opacity 0.3s ease, transform 0.3s ease;
-        overflow-y: auto;
+        overflow: hidden; /* Prevent section itself from scrolling */
     }
 
     /* Tab Switch Logic on Mobile */
@@ -972,7 +975,8 @@ body {
 
     .upload-header, .chat-header {
         text-align: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
+        flex-shrink: 0;
     }
 
     .upload-header h2, .chat-header h2 {
@@ -983,23 +987,46 @@ body {
     .chat-section {
         display: flex;
         flex-direction: column;
-        padding-bottom: 90px;
+        padding-bottom: 0; /* Reset */
     }
 
-    .chat-history { flex: 1; }
+    .chat-history {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: calc(120px + env(safe-area-inset-bottom));
+        mask-image: linear-gradient(to bottom, transparent, black 1%, black 95%, transparent);
+        -webkit-mask-image: linear-gradient(to bottom, transparent, black 1%, black 95%, transparent);
+    }
     
     .chat-input-wrapper {
         position: fixed;
-        bottom: 5rem;
-        left: 1rem;
-        right: 1rem;
-        margin-top: 0;
+        bottom: 70px; /* Aligned with 70px nav */
+        bottom: calc(70px + env(safe-area-inset-bottom));
+        left: 0;
+        right: 0;
+        margin: 0;
+        border-radius: 0;
+        border: none;
+        border-top: 1px solid var(--glass-border);
+        background: var(--panel-bg);
+        padding: 0.5rem 0.75rem;
         z-index: 50;
+        backdrop-filter: blur(20px);
+        display: flex;
+        align-items: center;
+    }
+
+    .msg-actions {
+        opacity: 1 !important;
+        visibility: visible !important;
+        bottom: 0.5rem !important;
+        right: 0.5rem !important;
+        display: flex !important;
     }
 
     .chat-typing {
-        bottom: 9rem;
-        left: 2rem;
+        bottom: calc(145px + env(safe-area-inset-bottom));
+        left: 1.5rem;
     }
 
     /* Mobile Nav Bar Styling */
